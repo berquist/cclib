@@ -722,6 +722,13 @@ class Psi4(logfileparser.Logfile):
             ccsd_t_energy = utils.convertor(float(line.split()[-1]), "hartree", "eV")
             self.ccenergies[-1] = ccsd_t_energy
 
+        if "CCSD Dipole Polarizability" in line:
+            if not hasattr(self, "polarizabilities"):
+                self.polarizabilities = []
+            self.skip_lines(inputfile, ["d", "header", "d", "b", "012", "b"])
+            polarizability = [next(inputfile).split()[1:] for _ in range(3)]
+            self.polarizabilities.append(numpy.array(polarizability))
+
         # The geometry convergence targets and values are printed in a table, with the legends
         # describing the convergence annotation. Probably exact slicing of the line needs
         # to be done in order to extract the numbers correctly. If there are no values for
