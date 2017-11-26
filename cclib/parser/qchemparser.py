@@ -1115,6 +1115,14 @@ cannot be determined. Rerun without `$molecule read`."""
                 t1_norm = math.sqrt(t1_squared)
                 self.metadata["t1_diagnostic"] = t1_norm / math.sqrt(2 * (self.nalpha + self.nbeta))
 
+            # Coupled cluster polarizability.
+            if line.strip() == "Polarizability Tensor ALPHA_IJ, I,J=X,Y,Z (a.u.):":
+                if not hasattr(self, "polarizabilities"):
+                    self.polarizabilities = []
+                self.skip_line(inputfile, "d")
+                polarizability = [next(inputfile).split() for _ in range(3)]
+                self.polarizabilities.append(numpy.array(polarizability))
+
             # Electronic transitions. Works for both CIS and TDDFT.
             if "Excitation Energies" in line:
                 # Restricted:
