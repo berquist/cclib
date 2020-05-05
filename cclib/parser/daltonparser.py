@@ -48,7 +48,8 @@ class DALTON(logfileparser.Logfile):
         # would like to use as triggers.
         self.section = None
 
-        # If there is no symmetry (point group is C1), assume this.
+        # If there is no symmetry (point group is C1), set default 
+        # symlabel to A (the only representation in C1)
         self.symlabels = ['A']
 
         # Is the basis set from a single library file? This is true
