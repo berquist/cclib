@@ -6,7 +6,7 @@ scipy>=1.2.0
 periodictable
 
 # bridges
-biopython==1.76
+biopython==1.79
 ase>=3.21 ; python_version >= '3.5'
 git+https://github.com/rpmuller/pyquante2.git ; python_version > '3.0'
 
