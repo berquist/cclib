@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (c) 2017, the cclib development team
+# Copyright (c) 2021, the TREX-CoE
 #
-# This file is part of cclib (http://cclib.github.io) and is distributed under
+# This file is part of TREX (http://trex-coe.eu) and is distributed under
 # the terms of the BSD 3-Clause License.
+# Contributors :: Evgeny Posenitskiy, Ravindra Shinde
 
-"""A reader for TREXIO (Cartesian coordinate) files."""
+"""A reader for TREXIO files."""
 
 from cclib.io import filereader
 from cclib.parser.data import ccData
@@ -18,7 +19,7 @@ class Trexio(filereader.Reader):
     """A reader for TREXIO files."""
 
     def __init__(self, source, *args, **kwargs):
-        super(TREXIO, self).__init__(source, *args, **kwargs)
+        super(Trexio, self).__init__(source, *args, **kwargs)
 
         self.pt = PeriodicTable()
 
@@ -33,6 +34,8 @@ class Trexio(filereader.Reader):
             # is it always the nucleus_charge of TREXIO ?
             atomnos = trexio.read_nucleus_charge(foo_file)
             atomcoords = trexio.read_nucleus_coord(foo_file)
+
+            atom_labels = trexio.read_nucleus_label(foo_file)
 
             nbasis = trexio.read_basis_num(foo_file)
             nmo = trexio.read_mo_num(foo_file)
@@ -52,23 +55,34 @@ class Trexio(filereader.Reader):
 
         foo_file.close()
 
-        all_atom_coords = np_array(1, atomcoords)
+        # so far, we treat TREXIO data as spin restricted for simplicity
+        all_atomcoords = np_array(1, atomcoords)
         all_mo_sym = [mo_sym]
         all_mo_coefficients = [mo_coeff]
 
+        # get atommasses from the list of labels and/or nuclear charges
+        if atom_labels or atomnos:
+
+            from periodictable import elements
+
+            if atom_labels:
+                masses = [elements.symbol(el).mass for el in atom_labels]
+            elif atomnos:
+                local_labels = [self.pt.element[Z] for Z in atomnos]
+                masses = [elements.symbol(el).mass for el in local_labels]
+
         # TODO: convert from TREXIO data to cclib:
-        # aonames (list of str), atombasis (list of int), 
-        # atommasses (convert from atomnos ?)
+        # aonames (list of str), atombasis (list of int),
         # coreelectrons (number of core elements in each atom's pseudopotential)
         # gbasis (list of lists of tuples) - info about Gaussian basis functions per atom
-        # homos (list of occupied orbital indices,e.g. (12,13,14))
+        # homos (a single value corresponding to HOMO: 1 value for restricted, 2 values for unrestricted, e.g. [4])
 
         attributes = {
             'natom': natom,
             'atomnos': atomnos,
             'atomcoords': all_atomcoords,
-            'metadata': {"comments": comments},
-        }
+            'metadata': {"comments": "TREXIO_TODO"}
+            }
 
         self.data = ccData(attributes)
 
