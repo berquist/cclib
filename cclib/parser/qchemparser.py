@@ -1276,6 +1276,50 @@ cannot be determined. Rerun without `$molecule read`."""
                 polarizability = [next(inputfile).split() for _ in range(3)]
                 self.polarizabilities.append(numpy.array(polarizability))
 
+            if "NMR-SHIELDING TENSORS" in line:
+                self.skip_lines(inputfile, ["b", "equals", "b", "b", "d"])
+                line = next(inputfile)
+                nmrtensors = dict()
+                header_to_key = {
+                    "diamagnetic (undisturbed density) part of shielding tensor  (EFS)": "diamagnetic",
+                    "paramagnetic (undisturbed density) part of shielding tensor (SOILP)": "paramagnetic_unperturbed",
+                    "paramagnetic (disturbed density) part of shielding tensor   (SOI)": "paramagnetic_perturbed",
+                    "total shielding tensor": "total",
+                }
+                while line.strip():
+                    tokens = line.split()
+                    idx = int(tokens[3]) - 1
+                    self.skip_lines(inputfile, ["d", "b"])
+                    line = next(inputfile)
+                    tokens = line.split()
+                    isotropic, anisotropic = float(tokens[1]), float(tokens[3])
+                    self.skip_line(inputfile, "b")
+                    line = next(inputfile)
+                    atomtensors = dict()
+                    while line.strip():
+                        key = header_to_key[line.strip()]
+                        line = next(inputfile)
+                        trace = float(line.split()[2])
+                        self.skip_line(inputfile, "Full Tensor:")
+                        line = next(inputfile)
+                        atomtensor = list()
+                        for _ in range(3):
+                            atomtensor.append([float(token) for token in line.split()])
+                            line = next(inputfile)
+                        atomtensors[key] = numpy.array(atomtensor)
+                    self.skip_lines(inputfile, ["b", "d"])
+                    line = next(inputfile)
+                    if (
+                        "paramagnetic_unperturbed" in atomtensors
+                        and "paramagnetic_perturbed" in atomtensors
+                    ):
+                        atomtensors["paramagnetic"] = (
+                            atomtensors["paramagnetic_unperturbed"]
+                            + atomtensors["paramagnetic_perturbed"]
+                        )
+                    nmrtensors[idx] = atomtensors
+                self.set_attribute("nmrtensors", nmrtensors)
+
             # Molecular orbital energies and symmetries.
             if line.strip() == "Orbital Energies (a.u.) and Symmetries":
                 #  --------------------------------------------------------------
