@@ -2412,6 +2412,29 @@ class Gaussian(logfileparser.Logfile):
                 polarizability = utils.symmetrize(polarizability, use_triangle="lower")
                 self.polarizabilities.append(polarizability)
 
+        # Captures both SCF and MP2
+        if line[5:42] == "GIAO Magnetic shielding tensor (ppm):":
+            nmrtensors = dict()
+            line = next(inputfile)
+            while "End of Minotr" not in line:
+                tokens = line.split()
+                idx = int(tokens[0]) - 1
+                isotropic, anisotropic = float(tokens[4]), float(tokens[7])
+                total = list()
+                for _ in range(3):
+                    tokens = next(inputfile).split()
+                    total.append([float(tokens[1]), float(tokens[3]), float(tokens[5])])
+                nmrtensors[idx] = {"total": numpy.asarray(total)}
+                eigenvalues = [float(token) for token in next(inputfile).split()[1:]]
+                line = next(inputfile)
+                if line[3:16] == "Eigenvectors:":
+                    eigenvectors = list()
+                    for _ in range(3):
+                        tokens = next(inputfile).split()
+                        eigenvectors.append([float(token) for token in tokens[1:]])
+                    line = next(inputfile)
+            self.set_attribute("nmrtensors", nmrtensors)
+
         # IRC Computation convergence checks.
         #
         # -------- Sample extract for IRC step --------
