@@ -106,6 +106,15 @@ class Gaussian(logfileparser.Logfile):
         # or a new round in an optimisation etc).
         self.last_et = 0
 
+        # Lines marking the end of parsing NMR shielding tensors.
+        self.end_of_magnetic_shielding_section_headers = {
+            "End of Minotr",
+            "Calculating GIAO one-electron integral",
+            "Max diff in",
+            "Current density tensor",
+            "Discarding MO integrals",
+        }
+
     def after_parsing(self):
         # atomcoords are parsed as a list of lists but it should be an array
         if hasattr(self, "atomcoords"):
@@ -2412,11 +2421,15 @@ class Gaussian(logfileparser.Logfile):
                 polarizability = utils.symmetrize(polarizability, use_triangle="lower")
                 self.polarizabilities.append(polarizability)
 
-        # Captures both SCF and MP2
-        if line[5:42] == "GIAO Magnetic shielding tensor (ppm):":
+        # NMR shielding tensors: captures both SCF and MP2, GIAO and signle
+        # gauge origin/IGAIM/CSGT.  When running with `all`, it only captures
+        # the last set of results (CSGT).
+        if "Magnetic shielding" in line:
             nmrtensors = dict()
             line = next(inputfile)
-            while "End of Minotr" not in line:
+            while all(
+                header not in line for header in self.end_of_magnetic_shielding_section_headers
+            ):
                 tokens = line.split()
                 idx = int(tokens[0]) - 1
                 isotropic, anisotropic = float(tokens[4]), float(tokens[7])
