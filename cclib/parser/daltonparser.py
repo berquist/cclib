@@ -1047,6 +1047,81 @@ class DALTON(logfileparser.Logfile):
                 row_counter -= 2
             self.set_attribute("hessian", utils.symmetrize(hessian, "lower"))
 
+        if "ABACUS - CHEMICAL SHIELDINGS" in line:
+            nmrtensors = dict()
+            while "Chemical shielding for" not in line:
+                line = next(inputfile)
+            idx = 0
+            while "Chemical shielding for" in line:
+                self.skip_lines(
+                    inputfile,
+                    [
+                        "e",
+                        "b",
+                        "b",
+                        "Shielding constant",
+                        "Anisotropy",
+                        "Asymmetry",
+                        "b",
+                        "S parameter",
+                        "A parameter",
+                        "b",
+                        "b",
+                        "Total shielding tensor",
+                        "d",
+                        "b",
+                        "BxByBz",
+                        "s",
+                    ],
+                )
+                atomtensors = dict()
+                total = list()
+                for _ in range(3):
+                    total.append([float(token) for token in next(inputfile).split()[-3:]])
+                self.skip_lines(
+                    inputfile, ["b", "b", "Diamagnetic and paramagnetic", "d", "b", "BxByBz", "s"]
+                )
+                diamagnetic, paramagnetic = list(), list()
+                for _ in range(3):
+                    tokens = next(inputfile).split()
+                    diamagnetic.append([float(token) for token in tokens[-6:-3]])
+                    paramagnetic.append([float(token) for token in tokens[-3:]])
+                nmrtensors[idx] = {
+                    "diamagnetic": numpy.array(diamagnetic),
+                    "paramagnetic": numpy.array(paramagnetic),
+                    "total": numpy.array(total),
+                }
+                self.skip_lines(
+                    inputfile,
+                    [
+                        "b",
+                        "Diamagnetic contribution",
+                        "b",
+                        "b",
+                        "Antisymmetric and traceless symmetric parts",
+                        "d",
+                        "b",
+                        "BxByBz",
+                        "b",
+                        "row 1",
+                        "row 2",
+                        "row 3",
+                        "b",
+                        "b",
+                        "Principal values and axes:",
+                        "d",
+                        "b",
+                        "row 1",
+                        "row 2",
+                        "row 3",
+                        "b",
+                        "b",
+                    ],
+                )
+                line = next(inputfile)
+                idx += 1
+            self.set_attribute("nmrtensors", nmrtensors)
+
         ## 'vibfreqs', 'vibirs', and 'vibsyms' appear in ABACUS.
         # Vibrational Frequencies and IR Intensities
         # ------------------------------------------
