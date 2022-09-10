@@ -1100,6 +1100,46 @@ class NWChem(logfileparser.Logfile):
                 polarizability.append(line.split()[1:])
             self.polarizabilities.append(numpy.array(polarizability))
 
+        if line[10:51] == "Chemical Shielding Tensors (GIAO, in ppm)":
+            nmrtensors = dict()
+            # Skip over CPSCF boilerplate.
+            while "Atom:" not in line:
+                line = next(inputfile)
+            while "Atom:" in line:
+                idx = int(line.split()[1]) - 1
+                self.skip_line(inputfile, "Diamagnetic")
+                diamagnetic = [[float(val) for val in next(inputfile).split()] for _ in range(3)]
+                self.skip_lines(inputfile, ["b", "Paramagnetic"])
+                paramagnetic = [[float(val) for val in next(inputfile).split()] for _ in range(3)]
+                self.skip_lines(inputfile, ["b", "Total Shielding Tensor"])
+                total = [[float(val) for val in next(inputfile).split()] for _ in range(3)]
+                nmrtensors[idx] = {
+                    "diamagnetic": numpy.array(diamagnetic),
+                    "paramagnetic": numpy.array(paramagnetic),
+                    "total": numpy.array(total),
+                }
+                self.skip_lines(
+                    inputfile,
+                    [
+                        "b",
+                        "isotropic",
+                        "anisotropy",
+                        "b",
+                        "Principal Components and Axis System",
+                        "numeric header",
+                        "principal values",
+                        "b",
+                        "row 1",
+                        "row 2",
+                        "row 3",
+                        "b",
+                        "b",
+                        "b",
+                    ],
+                )
+                line = next(inputfile)
+            self.set_attribute("nmrtensors", nmrtensors)
+
         if line[:18] == " Total times  cpu:":
             self.metadata["success"] = True
 
