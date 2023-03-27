@@ -213,7 +213,7 @@ class MOLDEN(filewriter.Writer):
             # frequency calculation is done via finite difference, but not
             # with multi-part inputs, which there is currently no way of
             # detecting.
-            atomcoords = utils.convertor(self.ccdata.atomcoords[0], "Angstrom", "bohr")
+            atomcoords = utils.convertor(self.ccdata.atomcoords[-1], "Angstrom", "bohr")
             atomsyms = (self.pt.element[atomno] for atomno in self.ccdata.atomnos)
             atomcoords_lines = ["[FR-COORD]"]
             for atomsym, atomcoord in zip(atomsyms, atomcoords):
