@@ -889,13 +889,12 @@ class Molcas(logfileparser.Logfile):
             self.skip_lines(inputfile, ["b", "()", "b"])
             line = next(inputfile)
             if "&CCSDT" in line:
-                while not line.strip().startswith("Total energy (diff)"):
+                while not line.strip().startswith("Correlation energy"):
                     line = next(inputfile)
 
-                ccenergies = utils.convertor(utils.float(line.split()[4]), "hartree", "eV")
-                if not hasattr(self, "ccenergies"):
-                    self.ccenergies = []
-                self.ccenergies.append(ccenergies)
+                # This is higher precision than "Total energy (diff)"
+                e_corr = utils.convertor(float(line.split()[3]), "hartree", "eV")
+                self.append_attribute("ccenergies", self.scfenergies[0] + e_corr)
 
         #  ++    Primitive basis info:
         #        ---------------------
