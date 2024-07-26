@@ -4,8 +4,8 @@
 cff-version: 1.2.0
 title: cclib
 message: >-
-  If you use this software, please cite it using the
-  metadata from this file.
+  Please cite this software using the citation from the 2.0
+  paper.
 type: software
 authors:
   - given-names: Eric
@@ -73,8 +73,17 @@ identifiers:
     description: >-
       [pre-v2.0 paper] cclib: A library for
       package-independent computational chemistry algorithms
+  - type: swh
+    value: 'swh:1:rel:39977285fe9d8b313abe44b33313336bb1ea8f5a'
+    description: cclib v1.8.1
+  - type: swh
+    value: 'swh:1:rel:fc8f0d2550a3a1bfe21ed0ca7c648e1cefddedb9'
+    description: cclib-data v1.8.1
 repository-code: 'https://github.com/cclib/cclib'
 url: 'https://cclib.github.io/'
 repository: 'https://github.com/cclib/cclib-data/'
 repository-artifact: 'https://pypi.org/project/cclib/1.8.1/'
 license: BSD-3-Clause
+commit: b73375cd61d28d8a2348b07d37cbf40369bd0a4a
+version: 2.0a1
+date-released: '2024-04-30'
