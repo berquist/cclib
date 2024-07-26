@@ -1,0 +1,80 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: cclib
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Eric
+    family-names: Berquist
+    orcid: 'https://orcid.org/0000-0001-8186-9522'
+  - given-names: Amanda
+    family-names: Dumi
+    orcid: 'https://orcid.org/0000-0002-2693-8537'
+  - given-names: Shiv
+    family-names: Upadhyay
+    orcid: 'https://orcid.org/0000-0002-8501-0501'
+  - given-names: Omri D.
+    family-names: Abarbanel
+    orcid: 'https://orcid.org/0000-0003-2299-4176'
+  - given-names: Minsik
+    family-names: Cho
+    orcid: 'https://orcid.org/0000-0002-9307-8549'
+  - given-names: Sagar
+    family-names: Gaur
+    orcid: 'https://orcid.org/0009-0008-0316-0372'
+  - given-names: Victor Hugo
+    family-names: Cano Gil
+    orcid: 'https://orcid.org/0000-0001-9703-8221'
+  - given-names: Geoffrey R.
+    family-names: Hutchison
+    orcid: 'https://orcid.org/0000-0002-1757-1980'
+  - given-names: Oliver S.
+    family-names: Lee
+    orcid: 'https://orcid.org/0009-0005-8365-816X'
+  - given-names: Andrew S.
+    family-names: Rosen
+    orcid: 'https://orcid.org/0000-0002-0141-7006'
+  - given-names: Sanjeed
+    family-names: Schamnad
+    orcid: 'https://orcid.org/0009-0003-6675-8535'
+  - given-names: Felipe
+    family-names: Schneider
+    orcid: 'https://orcid.org/0000-0001-8090-2976'
+  - given-names: Casper
+    family-names: Steinmann
+    orcid: 'https://orcid.org/0000-0002-5638-1346'
+  - given-names: Maxim
+    family-names: Stolyarchuk
+    orcid: 'https://orcid.org/0000-0001-9632-0233'
+  - given-names: Jonathon E.
+    family-names: Vandezande
+    orcid: 'https://orcid.org/0000-0001-7969-5498'
+  - given-names: Weronika
+    family-names: Zak
+    orcid: 'https://orcid.org/0009-0009-3249-6227'
+  - given-names: Karol M.
+    family-names: Langner
+    orcid: 'https://orcid.org/0000-0003-2826-5652'
+identifiers:
+  - type: doi
+    value: 10.1063/5.0216778
+    description: >-
+      [v2.0 paper] cclib 2.0: An updated architecture for
+      interoperable computational chemistry
+  - type: doi
+    value: 10.5281/zenodo.8280878
+    description: Zenodo release of v1.8
+  - type: doi
+    value: 10.1002/jcc.20823
+    description: >-
+      [pre-v2.0 paper] cclib: A library for
+      package-independent computational chemistry algorithms
+repository-code: 'https://github.com/cclib/cclib'
+url: 'https://cclib.github.io/'
+repository: 'https://github.com/cclib/cclib-data/'
+repository-artifact: 'https://pypi.org/project/cclib/1.8.1/'
+license: BSD-3-Clause
