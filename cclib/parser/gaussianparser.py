@@ -2364,6 +2364,44 @@ class Gaussian(logfileparser.Logfile):
             self.atomcharges["hirshfeld_sum"] = atomcharges_hirshfeld_summed
             self.atomcharges["cm5_sum"] = atomcharges_cm5_summed
 
+        # Determine information about ESP-derived charges.
+        if self.link == 602:
+            # Some are not prefixed for consistency with the Q-Chem parser.
+            radii_to_esp_model = {
+                "Breneman": "chelpg",
+                "Chirlian-Francl": "esp_chelp",
+                "Francl": "esp_chelp",
+                "Hu-Lu-Yang": "esp_hly",
+                # Ideally would be "esp_mk".
+                "Merz-Kollman": "esp",
+                "UFF": "esp_mkuff",
+            }
+            if "radii" in line:
+                self.esp_model = radii_to_esp_model[line.split()[0]]
+            elif line.startswith(" Generate Potential Derived Charges using the"):
+                self.esp_model = radii_to_esp_model[line.split()[6]]
+            elif line.strip() == "Electrostatic Properties Using The SCF Density":
+                self.skip_lines(inputfile, ["b", "s", "b"])
+                # atomic positions
+                for _ in range(self.natom):
+                    line = next(inputfile)
+                line = next(inputfile)
+                assert "points will be used for fitting atomic charges" in line
+                _npoints = int(line.split()[0])
+                line = next(inputfile)
+                assert "Fitting point charges" in line
+                line = next(inputfile)
+                assert line.startswith(" Charges from ESP fit")
+                line = next(inputfile)
+                assert line.startswith(" Charge=") or line.strip() == "ESP charges:"
+                line = next(inputfile)
+                assert line.strip() == "1"
+                charges = []
+                for _ in range(self.natom):
+                    line = next(inputfile)
+                    charges.append(float(line.split()[2]))
+                self.atomcharges[self.esp_model] = charges
+
         # Extract Thermochemistry
         # Temperature   298.150 Kelvin.  Pressure   1.00000 Atm.
         # Zero-point correction=                           0.342233 (Hartree/
