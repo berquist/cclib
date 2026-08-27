@@ -6,7 +6,10 @@
 
 """A writer for MolSSI quantum chemical JSON (QCSchema) files."""
 
+import datetime as dt
 import json
+import math
+from collections.abc import Mapping
 
 from cclib.io.cjsonwriter import CJSON as CJSONWriter
 from cclib.io.cjsonwriter import JSONIndentEncoder, NumpyAwareJSONEncoder
@@ -20,6 +23,157 @@ if _found_qcschema:
     import qcschema
 
 
+_AU_CONVERSIONS = {
+    "atomcoords": ("Angstrom", "bohr"),
+    "scancoords": ("Angstrom", "bohr"),
+    "vibdisps": ("Angstrom", "bohr"),
+    "ccenergies": ("eV", "hartree"),
+    "dispersionenergies": ("eV", "hartree"),
+    "moenergies": ("eV", "hartree"),
+    "mpenergies": ("eV", "hartree"),
+    "scanenergies": ("eV", "hartree"),
+    "scfenergies": ("eV", "hartree"),
+    "etenergies": ("wavenumber", "hartree"),
+    "vibanharms": ("wavenumber", "hartree"),
+    "vibfreqs": ("wavenumber", "hartree"),
+    "time": ("fs", "time_au"),
+}
+_AU_UNITS = {
+    "atomcharges": "e",
+    "charge": "e",
+    "enthalpy": "hartree",
+    "freeenergy": "hartree",
+    "zpve": "hartree",
+    "grads": "hartree/bohr",
+    "etdips": "ebohr",
+    "etveldips": "ebohr",
+    "etmagdips": "ebohr",
+    "moments": "a.u.",
+}
+_DIMENSIONLESS = {
+    "aonames",
+    "aooverlaps",
+    "atombasis",
+    "atomnos",
+    "atomspins",
+    "coreelectrons",
+    "etoscs",
+    "etsecs",
+    "etsyms",
+    "fonames",
+    "fooverlaps",
+    "fragnames",
+    "frags",
+    "homos",
+    "mocoeffs",
+    "mosyms",
+    "mult",
+    "natom",
+    "nbasis",
+    "nmo",
+    "nocoeffs",
+    "nooccnos",
+    "nsocoeffs",
+    "nsooccnos",
+    "optdone",
+    "optstatus",
+    "scannames",
+    "vibsyms",
+}
+_NO_UNIT_LABEL = {
+    "etrotats",
+    "gbasis",
+    "geotargets",
+    "geovalues",
+    "hessian",
+    "polarizabilities",
+    "scanparm",
+    "scftargets",
+    "scfvalues",
+    "transprop",
+}
+_NATIVE_UNITS = {
+    "atommasses": "Da",
+    "entropy": "hartree/(particle*K)",
+    "nmrcouplingtensors": "Hz",
+    "nmrtensors": "ppm",
+    "pressure": "atm",
+    "rotconsts": "GHz",
+    "temperature": "K",
+    "vibfconsts": "mDyne/Angstrom",
+    "vibirs": "km/mol",
+    "vibramans": "Angstrom^4/Da",
+    "vibrmasses": "Da",
+}
+
+
+def _convert_tree(value, fromunits, tounits):
+    if isinstance(value, np.ndarray):
+        return _convert_tree(value.tolist(), fromunits, tounits)
+    if isinstance(value, np.generic):
+        return _convert_tree(value.item(), fromunits, tounits)
+    if isinstance(value, (list, tuple)):
+        return [_convert_tree(item, fromunits, tounits) for item in value]
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return convertor(value, fromunits, tounits)
+    return value
+
+
+def _json_key(key):
+    if isinstance(key, str):
+        return key
+    return "__cclib_key__:" + json.dumps(_json_safe(key), sort_keys=True, separators=(",", ":"))
+
+
+def _json_safe(value):
+    if isinstance(value, np.ndarray):
+        return _json_safe(value.tolist())
+    if isinstance(value, np.generic):
+        return _json_safe(value.item())
+    if isinstance(value, dt.timedelta):
+        return {"__cclib_timedelta_seconds__": value.total_seconds()}
+    if isinstance(value, (dt.datetime, dt.date, dt.time)):
+        return value.isoformat()
+    if isinstance(value, float):
+        return value if math.isfinite(value) else {"__cclib_float__": str(value)}
+    if value is None or isinstance(value, (str, int, bool)):
+        return value
+    if isinstance(value, Mapping):
+        return {_json_key(key): _json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(item) for item in value]
+    raise TypeError(f"Cannot serialize cclib extras value {type(value)!r}")
+
+
+def validate_qcschema_output(qcschema_dict):
+    """Validate a QCSchema output dict against the MolSSI JSON schema.
+
+    Fields that QCElemental defines but the pinned MolSSI schema version
+    doesn't know about yet are dropped first, since the schema forbids
+    additional properties.  Currently that is only wavefunction "restricted".
+    """
+    if not _found_qcschema:
+        raise ImportError("The qcschema package is required to validate QCSchema output")
+    wavefunction = {
+        key: value
+        for key, value in qcschema_dict.get("wavefunction", {}).items()
+        if key != "restricted"
+    }
+    qcschema.validate({**qcschema_dict, "wavefunction": wavefunction}, schema_type="output")
+
+
+def _unit_for(attribute):
+    if attribute in _AU_CONVERSIONS:
+        return _AU_CONVERSIONS[attribute][1]
+    if attribute in _AU_UNITS:
+        return _AU_UNITS[attribute]
+    if attribute in _DIMENSIONLESS:
+        return "dimensionless"
+    if attribute in _NATIVE_UNITS:
+        return _NATIVE_UNITS[attribute]
+    return "unknown"
+
+
 class QCSchemaWriter(CJSONWriter):
     """A writer for QCSchema files."""
 
@@ -27,13 +181,20 @@ class QCSchemaWriter(CJSONWriter):
         super().__init__(ccdata, *args, **kwargs)
 
     def as_dict(self, validate=True):
+        """Build QCSchema output using JSON-serializable native Python values.
+
+        Args:
+            validate: Validate the output against the MolSSI JSON schema.
+        """
         metadata = self.ccdata.metadata
 
         qcschema_dict = {
             "schema_name": "qcschema_output",
             "schema_version": 1,
             "molecule": {
-                "geometry": self.ccdata.atomcoords[-1].flatten().tolist(),
+                "geometry": convertor(self.ccdata.atomcoords[-1], "Angstrom", "bohr")
+                .flatten()
+                .tolist(),
                 "molecular_charge": self.ccdata.charge,
                 "molecular_multiplicity": self.ccdata.mult,
                 "schema_name": "qcschema_molecule",
@@ -51,6 +212,19 @@ class QCSchemaWriter(CJSONWriter):
             "stdout": None,
             "stderr": None,
         }
+
+        qcschema_dict["extras"] = {}
+        for attribute in self.ccdata._attrlist:
+            if attribute != "metadata" and hasattr(self.ccdata, attribute):
+                value = getattr(self.ccdata, attribute)
+                if attribute in _AU_CONVERSIONS:
+                    value = _convert_tree(value, *_AU_CONVERSIONS[attribute])
+                qcschema_dict["extras"][attribute] = value
+                if (
+                    attribute
+                    not in set(_AU_CONVERSIONS) | set(_AU_UNITS) | _DIMENSIONLESS | _NO_UNIT_LABEL
+                ):
+                    qcschema_dict["extras"][f"{attribute}_unit"] = _unit_for(attribute)
 
         # TODO This should be derived from a parsed job type.  It's also not
         # quite right when considering that many jobs (for example, geometry
@@ -93,6 +267,12 @@ class QCSchemaWriter(CJSONWriter):
             return_energy = scf_total_energy
         elif metadata["methods"][-1] == "DFT":
             return_energy = scf_total_energy
+        elif method == "MP2":
+            mp2_total_energy = convertor(self.ccdata.mpenergies[-1][-1], "eV", "hartree")
+            mp2_correlation_energy = convertor(
+                self.ccdata.mpenergies[-1][-1] - self.ccdata.scfenergies[-1], "eV", "hartree"
+            )
+            return_energy = mp2_total_energy
         elif method == "CCSD":
             if hasattr(self.ccdata, "mpenergies"):
                 mp2_total_energy = convertor(self.ccdata.mpenergies[-1][-1], "eV", "hartree")
@@ -154,11 +334,11 @@ class QCSchemaWriter(CJSONWriter):
             # scf_xc_energy
         }
         if hasattr(self.ccdata, "dispersionenergies"):
-            qcschema_dict["properties"]["scf_dispersion_correction_energy"] = (
-                self.ccdata.dispersionenergies[-1]
+            qcschema_dict["properties"]["scf_dispersion_correction_energy"] = convertor(
+                self.ccdata.dispersionenergies[-1], "eV", "hartree"
             )
         if scf_dipole_moment is not None:
-            qcschema_dict["scf_dipole_moment"] = scf_dipole_moment
+            qcschema_dict["properties"]["scf_dipole_moment"] = scf_dipole_moment
         if mp2_correlation_energy is not None:
             qcschema_dict["properties"].update(
                 {
@@ -174,10 +354,12 @@ class QCSchemaWriter(CJSONWriter):
                 }
             )
 
+        # QCElemental's WavefunctionProperties requires "restricted", but the
+        # MolSSI JSON schemas (both v2 and dev) don't have it yet, so
+        # validate_qcschema_output has to drop it.
         qcschema_dict["wavefunction"] = {
-            "basis": {"name": basis_set_name, "center_data": {}, "atom_map": []}
-            # TODO in latest schema version
-            # "restricted": bool,
+            "basis": {"name": basis_set_name, "center_data": {}, "atom_map": []},
+            "restricted": len(self.ccdata.homos) == 1,
         }
 
         has_beta = len(self.ccdata.homos) == 2
@@ -189,11 +371,13 @@ class QCSchemaWriter(CJSONWriter):
         # coefficients and eigenvalues come from diagonalizing a (correlated)
         # density matrix, we assume that they are from SCF.
         if hasattr(self.ccdata, "moenergies"):
-            qcschema_dict["wavefunction"]["scf_eigenvalues_a"] = self.ccdata.moenergies[0].tolist()
+            qcschema_dict["wavefunction"]["scf_eigenvalues_a"] = convertor(
+                self.ccdata.moenergies[0], "eV", "hartree"
+            ).tolist()
             if has_beta:
-                qcschema_dict["wavefunction"]["scf_eigenvalues_b"] = self.ccdata.moenergies[
-                    1
-                ].tolist()
+                qcschema_dict["wavefunction"]["scf_eigenvalues_b"] = convertor(
+                    self.ccdata.moenergies[1], "eV", "hartree"
+                ).tolist()
 
         if hasattr(self.ccdata, "mocoeffs"):
             mocoeffs_a = self.ccdata.mocoeffs[0]
@@ -218,8 +402,12 @@ class QCSchemaWriter(CJSONWriter):
             raise RuntimeError(f"Don't know driver {driver}")
         qcschema_dict["return_result"] = return_result
 
+        # Normalize once at the serialization boundary so direct callers do not
+        # need a NumPy-aware JSON encoder.
+        qcschema_dict = _json_safe(qcschema_dict)
+
         if validate:
-            qcschema.validate(qcschema_dict, schema_type="output")
+            validate_qcschema_output(qcschema_dict)
 
         return qcschema_dict
 

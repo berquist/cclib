@@ -370,6 +370,9 @@ cannot be determined. Rerun without `$molecule read`."""
         """
         energies = []
         symbols = []
+        # Q-Chem can omit the ``Virtual`` heading when every printed orbital
+        # is occupied (for example, a He/STO-3G single-point calculation).
+        homo = None
 
         line = next(inputfile)
         # Sometimes Q-Chem gets a little confused...
@@ -403,6 +406,8 @@ cannot be determined. Rerun without `$molecule read`."""
         # MO symmetries are either not present or there is one for each MO
         # (energy).
         assert len(symbols) in (0, len(energies))
+        if homo is None:
+            homo = len(energies) - 1
 
         return energies, symbols, homo
 

@@ -156,6 +156,14 @@ class _determine_output_formatTest:
         with pytest.raises(self.UnknownOutputFormatError):
             self._determine_output_format(None, None)
 
+    def test_json_alias(self) -> None:
+        """Do json and cjson resolve to the same CJSON writer."""
+        json_writer = self._determine_output_format("json", None)
+        cjson_writer = self._determine_output_format("cjson", None)
+
+        assert json_writer is cclib.io.cjsonwriter.CJSON
+        assert json_writer is cjson_writer
+
 
 class fallbackTest:
     def setup_method(self) -> None:

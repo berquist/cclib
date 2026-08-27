@@ -49,7 +49,7 @@ From command line
 The cclib package provides four scripts to parse and write data: ``ccget``, ``ccwrite``, ``cda``, and ``ccframe``.
 
 1. **ccget** is used to parse attribute data from output files.
-2. **ccwrite** has the ability to list out all valid attribute data that can be parsed from an output format. It has the added feature of writing the output file into four different formats i.e. ``json``, ``cjson``, ``cml``, ``xyz``.
+2. **ccwrite** lists the valid attribute data parsed from an input and writes it in a selected supported output format.
 3. **cda** is used for the chemical decomposition analysis of output files.
 4. **ccframe** is used to write data tables from output files.
 
@@ -143,7 +143,7 @@ Command line format::
 
     ccwrite <OutputFileFormat>  <CompChemLogFile> [<CompChemLogFile>]
 
-The valid output file formats are ``cjson``, ``cml``, and ``xyz``.
+Run ``ccwrite --help`` for the current list of valid output formats.
 
 1. `Chemical markup language`_ (CML)::
 
